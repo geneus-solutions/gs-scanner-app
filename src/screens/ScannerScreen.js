@@ -124,9 +124,9 @@ export default function ScannerScreen() {
 
     const msg = `🚀 ${s.symbol} ${getSignal(s)}
 
-Entry: ₹${t.entry}
-SL: ₹${t.sl}
-Target: ₹${t.target}`;
+    Entry: ₹${t.entry}
+    SL: ₹${t.sl}
+    Target: ₹${t.target}`;
 
     Linking.openURL(`https://wa.me/?text=${encodeURIComponent(msg)}`);
   };
@@ -215,7 +215,7 @@ Target: ₹${t.target}`;
   if (loading) return <ActivityIndicator style={{ marginTop: 50 }} />;
 
   const marketOpen = isMarketOpen();
-
+  //const marketOpen = true;
   // ===============================
   // UI
   // ===============================
