@@ -26,30 +26,84 @@ In the output, you'll find options to open the app in a
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
 
 ```bash
 npm run reset-project
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+==========================================================
+Since your app is Expo-based (from your screenshot):
 
-## Learn more
+👉 You don’t build APK locally like Android Studio by default
+👉 You use EAS Build (Expo’s official way)
 
-To learn more about developing your project with Expo, look at the following resources:
+✅ BEST METHOD (Recommended): EAS Build (Cloud)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+This is what most devs use now.
 
-## Join the community
+🟢 Step 1: Install EAS CLI
+npm install -g eas-cli
 
-Join our community of developers creating universal apps.
+🟢 Step 2: Login to Expo
+eas login
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+🟢 Step 3: Initialize EAS
+Inside your project:
+eas build:configure
+
+👉 This creates:
+
+eas.json
 
 
+🟢 Step 4: Build APK
+eas build -p android --profile preview
+
+
+👉 After a few minutes:
+You’ll get a download link
+That is your APK
+
+-------------------------------
+⚡ If you want DIRECT APK (not AAB)
+
+Edit eas.json:
+
+{
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
+
+Then run again:
+
+eas build -p android --profile preview
+
+
+========================================
+🔵 Alternative (LOCAL APK - harder)
+
+Only if you insist:
+
+npx expo prebuild
+
+Then:
+
+cd android
+gradlew assembleRelease
+
+👉 APK path:
+
+android/app/build/outputs/apk/release/app-release.apk
+
+==========================
+1. For testing on phone:
+eas build --profile preview
+
+
+2. For Play Store:
+eas build --profile production
