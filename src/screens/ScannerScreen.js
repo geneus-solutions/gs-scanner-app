@@ -17,6 +17,8 @@ export default function ScannerScreen() {
   const [topStocks, setTopStocks] = useState([]);
   const [weakStocks, setWeakStocks] = useState([]);
   const [gapStocks, setGapStocks] = useState([]);
+  const [shortStocks, setShortStocks] = useState([]); // 🔴 NEW
+
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
 
@@ -39,7 +41,7 @@ export default function ScannerScreen() {
   }
 
   // ===============================
-  // SAFE TRADING WINDOW (FILTER)
+  // SAFE TRADING WINDOW
   // ===============================
   function isTradeAllowedTime() {
     const now = new Date(
@@ -56,12 +58,11 @@ export default function ScannerScreen() {
   }
 
   // ===============================
-  // ALERT
+  // ALERT (BUY)
   // ===============================
   function sendAlert(stock) {
 
-    if (!isTradeAllowedTime()) return; // 🔒 block alerts outside time
-
+    if (!isTradeAllowedTime()) return;
     if (!stock || alertedStocks.current.has(stock.symbol)) return;
 
     alertedStocks.current.add(stock.symbol);
@@ -73,7 +74,23 @@ export default function ScannerScreen() {
   }
 
   // ===============================
-  // SIGNAL
+  // ALERT (SHORT)
+  // ===============================
+  function sendShortAlert(stock) {
+
+    if (!isTradeAllowedTime()) return;
+    if (!stock || alertedStocks.current.has(stock.symbol + "_SHORT")) return;
+
+    alertedStocks.current.add(stock.symbol + "_SHORT");
+
+    Alert.alert(
+      "🔻 SHORT OPPORTUNITY",
+      `${stock.symbol}\nEntry ₹${stock.price}`
+    );
+  }
+
+  // ===============================
+  // SIGNAL (BUY)
   // ===============================
   function getSignal(s) {
     if (!s) return null;
@@ -91,7 +108,24 @@ export default function ScannerScreen() {
   }
 
   // ===============================
-  // FILTER
+  // SIGNAL (SHORT)
+  // ===============================
+  function getShortSignal(s) {
+    if (!s) return null;
+
+    if (
+      s.shortScore >= 80 &&
+      s.momentum < -0.5 &&
+      s.vol_ratio > 1.5
+    ) {
+      return "SHORT 🔻";
+    }
+
+    return null;
+  }
+
+  // ===============================
+  // FILTER (BUY)
   // ===============================
   function isHighQuality(s) {
     if (!s) return false;
@@ -105,7 +139,21 @@ export default function ScannerScreen() {
   }
 
   // ===============================
-  // TRADE
+  // FILTER (SHORT)
+  // ===============================
+  function isShortQuality(s) {
+    if (!s) return false;
+
+    if (!isTradeAllowedTime()) return false;
+    if (!getShortSignal(s)) return false;
+    if ((s.vol_ratio || 0) < 1.5) return false;
+    if ((s.price || 0) < 50) return false;
+
+    return true;
+  }
+
+  // ===============================
+  // TRADE (BUY)
   // ===============================
   function getTrade(s) {
     const price = Number(s.price || 0);
@@ -117,16 +165,34 @@ export default function ScannerScreen() {
   }
 
   // ===============================
+  // TRADE (SHORT)
+  // ===============================
+  function getShortTrade(s) {
+    const price = Number(s.price || 0);
+    return {
+      entry: price.toFixed(2),
+      sl: (price * 1.015).toFixed(2),
+      target: (price * 0.97).toFixed(2)
+    };
+  }
+
+  // ===============================
   // WHATSAPP
   // ===============================
-  const sendWhatsApp = (s) => {
-    const t = getTrade(s);
+  const sendWhatsApp = (s, isShort = false) => {
+    const t = isShort ? getShortTrade(s) : getTrade(s);
 
-    const msg = `🚀 ${s.symbol} ${getSignal(s)}
+    const msg = isShort
+      ? `🔻 ${s.symbol} SHORT
 
-    Entry: ₹${t.entry}
-    SL: ₹${t.sl}
-    Target: ₹${t.target}`;
+Entry: ₹${t.entry}
+SL: ₹${t.sl}
+Target: ₹${t.target}`
+      : `🚀 ${s.symbol} ${getSignal(s)}
+
+Entry: ₹${t.entry}
+SL: ₹${t.sl}
+Target: ₹${t.target}`;
 
     Linking.openURL(`https://wa.me/?text=${encodeURIComponent(msg)}`);
   };
@@ -141,6 +207,7 @@ export default function ScannerScreen() {
         setTopStocks(data.top || []);
         setWeakStocks(data.weak || []);
         setGapStocks(data.gap || []);
+        setShortStocks(data.shortCandidates || []); // 🔴 NEW
         setLoading(false);
       });
   }, []);
@@ -164,9 +231,19 @@ export default function ScannerScreen() {
         }
       });
 
+      // 🔴 SHORT
+      const shortFiltered = (data.shortCandidates || []).filter(isShortQuality);
+
+      shortFiltered.forEach(s => {
+        if (getShortSignal(s)) {
+          sendShortAlert(s);
+        }
+      });
+
       setTopStocks(data.top || []);
       setWeakStocks(data.weak || []);
       setGapStocks(data.gap || []);
+      setShortStocks(data.shortCandidates || []);
       setLoading(false);
     });
 
@@ -177,7 +254,7 @@ export default function ScannerScreen() {
   }, []);
 
   // ===============================
-  // CARD
+  // CARD (BUY)
   // ===============================
   const renderCard = (s) => {
 
@@ -210,12 +287,45 @@ export default function ScannerScreen() {
   };
 
   // ===============================
+  // CARD (SHORT)
+  // ===============================
+  const renderShortCard = (s) => {
+
+    const signal = getShortSignal(s);
+    if (!signal) return null;
+
+    const trade = getShortTrade(s);
+
+    return (
+      <View key={s.symbol + "_short"} style={{
+        backgroundColor: "#fff",
+        padding: 12,
+        marginBottom: 10,
+        borderRadius: 10,
+        borderLeftWidth: 5,
+        borderLeftColor: "red"
+      }}>
+        <Text style={{ fontWeight: "bold" }}>{s.symbol}</Text>
+        <Text>₹ {Number(s.price).toFixed(2)}</Text>
+
+        <Text>🎯 {signal}</Text>
+
+        <Text>Entry: ₹{trade.entry}</Text>
+        <Text style={{ color: "red" }}>SL: ₹{trade.sl}</Text>
+        <Text style={{ color: "green" }}>Target: ₹{trade.target}</Text>
+
+        <Button title="WhatsApp" onPress={() => sendWhatsApp(s, true)} />
+      </View>
+    );
+  };
+
+  // ===============================
   // LOADING
   // ===============================
   if (loading) return <ActivityIndicator style={{ marginTop: 50 }} />;
 
   const marketOpen = isMarketOpen();
-  //const marketOpen = true;
+
   // ===============================
   // UI
   // ===============================
@@ -223,10 +333,8 @@ export default function ScannerScreen() {
     <ScrollView style={{ padding: 15 }}>
 
       <Text style={{ fontSize: 18 }}>⚡ Intraday Scanner</Text>
-
       <Text>{connected ? "🟢 Live" : "🔴 Offline"}</Text>
 
-      {/* MARKET STATUS */}
       <Text style={{ marginTop: 5 }}>
         {marketOpen ? "🟢 Market Open" : "🔴 Market Closed"}
       </Text>
@@ -245,6 +353,15 @@ export default function ScannerScreen() {
 
       <Text>🔥 Gap</Text>
       {marketOpen && gapStocks.filter(isHighQuality).slice(0, 3).map(renderCard)}
+
+      {/* 🔴 SHORT SECTION */}
+      <Text style={{ marginTop: 10 }}>🔻 Short Selling</Text>
+      {marketOpen &&
+        shortStocks
+          .filter(isShortQuality)
+          .slice(0, 5)
+          .map(renderShortCard)
+      }
 
     </ScrollView>
   );
