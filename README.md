@@ -45,6 +45,7 @@ This is what most devs use now.
 npm install -g eas-cli
 
 🟢 Step 2: Login to Expo
+eas whoami
 eas login
 
 🟢 Step 3: Initialize EAS
@@ -79,10 +80,12 @@ Edit eas.json:
   }
 }
 
-Then run again:
+Then run again:Quick testing APK (occasionally):
 
 eas build -p android --profile preview
 
+Production:
+eas build -p android --profile production
 
 ========================================
 🔵 Alternative (LOCAL APK - harder)
